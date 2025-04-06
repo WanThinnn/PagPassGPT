@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+tokenizer/__pycache__/
+*.pyc
 
 # C extensions
 *.so
@@ -152,4 +154,3 @@ trans.json
 *.json
 
 dataset/*
-.env
