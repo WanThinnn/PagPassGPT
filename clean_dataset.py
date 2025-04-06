@@ -10,24 +10,30 @@ This file aims to implement data cleaning:
 
 import argparse
 
-
+# Kiểm tra một mật khẩu có hợp lệ hay không
 def filter_password(password):
+    # Độ dài mật khẩu phải từ 4 đến 12 ký tự
     if len(password) < 4 or len(password) > 12:
         return False
+    # Mỗi ký tự trong mật khẩu phải có 32 < ASCII ≤ 126
     for ch in password:
         if ord(ch) > 126 or ord(ch) <= 32:
             return False
     return True
 
-
+# Xử lý toàn bộ file dataset
 def preprocess(password_path, output_path):
+    # Mở file input (đọc) và file output (ghi)
     f = open(password_path, 'r', encoding='utf-8', errors='ignore')
     f_out = open(output_path, 'w', encoding='utf-8', errors='ignore')
 
+    # Đọc tất cả các dòng từ file input
     lines = f.readlines()
+    # Sử dụng set() để tự động loại bỏ các dòng trùng lặp
     lines = set(lines)
     total_num = 0
     valid_num = 0
+    # Duyệt qua từng dòng trong file input, sau đó kiểm tra xem mật khẩu có hợp lệ hay không
     for line in lines:
         if not line:
             continue

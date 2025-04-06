@@ -1,3 +1,5 @@
+# Đây là file chính chứa implementation của bộ tokenizer xử lý mật khẩu
+
 from typing import Any, Dict, List, overload
 import torch
 import json
@@ -6,6 +8,8 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 char = str
 
 class CharTokenizer(PreTrainedTokenizer):
+    # Đọc file vocab.json để tạo bộ encoder (từ token → id) và decoder (từ id → token)
+    # Thiết lập các token đặc biệt: BOS (Begin Of Sequence), EOS (End Of Sequence), SEP (Separator), UNK (Unknown), PAD (Padding)
     def __init__(
         self,
         vocab_file,
@@ -47,6 +51,7 @@ class CharTokenizer(PreTrainedTokenizer):
     def get_vocab(self):
         return dict(self.encoder)
     
+    # Chia text thành các token (hiện tại dùng split(' '))
     def _tokenize(self, text: str) -> List[char]:
         if text == '':
             return []
@@ -64,10 +69,12 @@ class CharTokenizer(PreTrainedTokenizer):
         #         text = text[1:]
         return text.strip(' ').split(' ')
 
+    # Chuyển token thành id tương ứng
     def _convert_token_to_id(self, token):
         """Converts a token (str) in an id using the vocab."""
         return self.encoder.get(token, self.encoder.get(self.unk_token))
 
+    # Chuyển id thành token tương ứng
     def _convert_id_to_token(self, index):
         """Converts an index (integer) in a token (str) using the vocab."""
         return self.decoder.get(index)
@@ -77,6 +84,7 @@ class CharTokenizer(PreTrainedTokenizer):
         text = "".join(tokens)
         return text
     
+    # Mã hóa text thành sequence các id
     def encode(self, text: str, return_is_tensor=False) -> Any:
         indices: List[int] = [self.encoder.get(c, self.unk_token_id) for c in self._tokenize(text)]
         if self.add_bos_and_eos:
@@ -91,6 +99,7 @@ class CharTokenizer(PreTrainedTokenizer):
         indices = [self.bos_token_id] + indices
         return torch.tensor(indices)
     
+    # Giải mã sequence các id thành text
     def decode(self, indices: torch.Tensor) -> str:
         chars = []
         for index in indices:
@@ -104,6 +113,8 @@ class CharTokenizer(PreTrainedTokenizer):
             chars.append(decode_ans)
         return "".join(chars)
 
+
+    # Giao diện chính để tokenize text (hỗ trợ padding và không padding)
     @overload
     def __call__(self, texts: str, max_len=None, padding=False) -> Dict:
         ...

@@ -1,13 +1,16 @@
-dataset_name="rockyou"
-original_dataset="./dataset/${dataset_name}.txt"
-cleaned_dataset="./dataset/${dataset_name}-cleaned.txt"
-training_dataset="./dataset/${dataset_name}-cleaned-Train.txt"
-test_dataset="./dataset/${dataset_name}-cleaned-Test.txt"
-ready4train_dataset="./dataset/${dataset_name}-cleaned-Train-ready.txt"
+# File này thực hiện tiền xử lý dữ liệu trước khi huấn luyện mô hình
+dataset_name="rockyou"  # Tên dataset
+original_dataset="./dataset/${dataset_name}.txt"  # Đường dẫn dataset gốc
+cleaned_dataset="./dataset/${dataset_name}-cleaned.txt"  # Đường dẫn dataset đã làm sạch
+training_dataset="./dataset/${dataset_name}-cleaned-Train.txt"  # Đường dẫn tập train
+test_dataset="./dataset/${dataset_name}-cleaned-Test.txt"  # Đường dẫn tập test
+ready4train_dataset="./dataset/${dataset_name}-cleaned-Train-ready.txt"  # Đường dẫn dataset sẵn sàng để train
 
-# 1. clean dataset
+# 1. Làm sạch dataset gốc
 python clean_dataset.py --dataset_path=$original_dataset --output_path=$cleaned_dataset
-# 2. split into training set and test set
+
+# 2. Chia dataset thành tập train và test
 python split_dataset.py --dataset_path=$cleaned_dataset --train_path=$training_dataset --test_path=$test_dataset
-# 3. concat pattern and password together
+
+# 3. Kết hợp pattern và password để chuẩn bị cho training
 python concat_pattern_password.py --dataset_path=$training_dataset --output_path=$ready4train_dataset
