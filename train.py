@@ -19,7 +19,7 @@ parser.add_argument("--model_path", help="directory to save model", type=str, de
 parser.add_argument("--log_path", help="directory of log", type=str, default="./log/") # Đường dẫn để lưu log
 # environment parameter setting
 parser.add_argument("--random_seed", help="random seed", type=int, default=42) # Hạt giống ngẫu nhiên để đảm bảo tính tái lập của quá trình huấn luyện
-parser.add_argument("--num_processer", help="num of processer (cpu logit cores)", type=int, default=1) # Số lượng bộ xử lý (CPU) để xử lý dữ liệu
+parser.add_argument("--num_processer", help="num of processer (cpu logit cores)", type=int, default=10) # Số lượng bộ xử lý (CPU) để xử lý dữ liệu
 # model parameter setting
 parser.add_argument("--input_size", help="should be larger than (2*max len of password + 3), default is 32 according to max_len=12", type=int, default=32) # Kích thước đầu vào của mô hình, phải lớn hơn (2*max len của mật khẩu + 3), mặc định là 32 theo max_len=12
 parser.add_argument("--embed_size", help="embedding size", type=int, default=384) # Kích thước nhúng của mô hình
