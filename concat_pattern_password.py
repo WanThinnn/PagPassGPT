@@ -5,11 +5,23 @@ This file aims to process the input passwords to the rule as follows for convien
 
 """
 
+"""
+File này được viết để xử lý các mật khẩu đầu vào theo quy tắc sau cho thuận tiện cho việc huấn luyện:
+    pattern <SEP> password
+"""
+
 
 import argparse
 
 
 def get_pattern(password:str):
+    """
+    Hàm này nhận vào một mật khẩu và trả về một danh sách các chuỗi mô tả kiểu ký tự của mật khẩu.
+    Hàm này phân tích mật khẩu thành các phần tử dựa trên loại ký tự (chữ cái, số hoặc ký tự đặc biệt) và độ dài của mỗi phần tử.
+    Mỗi phần tử trong danh sách được định dạng dưới dạng "L" cho chữ cái, "N" cho số và "S" cho ký tự đặc biệt, theo sau là độ dài của phần tử đó.
+    Ví dụ: nếu mật khẩu là "abc123!@#", hàm sẽ trả về ['L3', 'N3', 'S4'].
+    
+    """
     result = []
     
     current_type = None
