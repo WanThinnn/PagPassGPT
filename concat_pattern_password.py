@@ -21,6 +21,10 @@ def get_pattern(password:str):
     Mỗi phần tử trong danh sách được định dạng dưới dạng "L" cho chữ cái, "N" cho số và "S" cho ký tự đặc biệt, theo sau là độ dài của phần tử đó.
     Ví dụ: nếu mật khẩu là "abc123!@#", hàm sẽ trả về ['L3', 'N3', 'S4'].
     
+    :param password: mật khẩu cần phân tích
+    :return: danh sách các chuỗi mô tả kiểu ký tự của mật khẩu
+    
+    
     """
     result = [] # danh sách để lưu trữ các phần tử mô tả kiểu ký tự
     

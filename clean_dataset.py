@@ -7,11 +7,27 @@ This file aims to implement data cleaning:
 
 """
 
+'''
+File này được viết để thực hiện việc làm sạch dữ liệu:
+    Nó giữ lại các mật khẩu có độ dài từ 4 đến 12 ký tự.
+    Nó loại bỏ các mật khẩu trùng lặp.
+    Nó loại bỏ các mật khẩu chứa ký tự không phải ASCII và ký tự ASCII vô hình.
+    Nó sử dụng thư viện argparse để xử lý các tham số dòng lệnh và thư viện os để làm việc với hệ thống tệp.
+
+'''
+
 
 import argparse
 
 # Kiểm tra một mật khẩu có hợp lệ hay không
 def filter_password(password):
+    '''
+    Hàm này nhận vào một mật khẩu và kiểm tra xem nó có hợp lệ hay không.
+    Một mật khẩu được coi là hợp lệ nếu nó có độ dài từ 4 đến 12 ký tự và mỗi ký tự trong mật khẩu có mã ASCII nằm trong khoảng từ 33 đến 126 (không bao gồm các ký tự không in được).
+    
+    :param password: mật khẩu cần kiểm tra
+    :return: True nếu mật khẩu hợp lệ, False nếu không hợp lệ
+    '''
     # Độ dài mật khẩu phải từ 4 đến 12 ký tự
     if len(password) < 4 or len(password) > 12:
         return False

@@ -1,3 +1,13 @@
+'''
+File này được viết để sinh mật khẩu bằng cách sử dụng mô hình GPT-2 đã được huấn luyện trước đó.
+Nó sẽ sử dụng thư viện transformers để tải mô hình GPT-2 và thư viện PyTorch để xử lý tensor và GPU.
+Nó sẽ sử dụng thư viện argparse để xử lý các tham số dòng lệnh và thư viện os để làm việc với hệ thống tệp.
+Nó sẽ sử dụng thư viện threading để xử lý đa luồng và thư viện time để đo thời gian thực thi.
+Nó sẽ sử dụng một lớp kế thừa từ threading.Thread để hỗ trợ trả về giá trị từ luồng.
+
+
+'''
+
 from transformers import (
     GPT2LMHeadModel  # Nhập mô hình GPT-2 để tạo văn bản (ở đây dùng để sinh mật khẩu)
 )
@@ -13,14 +23,31 @@ MAX_LEN = 32  # Độ dài tối đa của chuỗi đầu ra (mật khẩu), ph�
 class ThreadBase(threading.Thread):
     """Lớp kế thừa threading.Thread để hỗ trợ trả về giá trị từ luồng"""
     def __init__(self, target=None, args=()):
+        '''
+        Hàm khởi tạo lớp ThreadBase
+        
+        :param target: Hàm mục tiêu sẽ chạy trong luồng
+        :param args: Các tham số truyền vào hàm mục tiêu
+        
+        '''
         super().__init__()  # Gọi hàm khởi tạo của lớp cha threading.Thread
         self.func = target  # Hàm mục tiêu sẽ chạy trong luồng
         self.args = args  # Các tham số truyền vào hàm mục tiêu
  
     def run(self):
+        '''
+        Hàm chạy trong luồng
+        
+        :return: Không trả về giá trị
+        '''
         self.result = self.func(*self.args)  # Chạy hàm mục tiêu và lưu kết quả vào self.result
  
     def get_result(self):
+        '''
+        Hàm để lấy kết quả từ luồng
+        
+        :return: Kết quả của luồng hoặc None nếu có lỗi xảy ra
+        '''
         try:
             return self.result  # Trả về kết quả của luồng
         except Exception as e:
@@ -28,7 +55,15 @@ class ThreadBase(threading.Thread):
             return None  # Trả về None nếu xảy ra lỗi
 
 def gen_sample(test_model_path, tokenizer, GEN_BATCH_SIZE, GPU_ID):
-    """Hàm tạo mẫu mật khẩu bằng mô hình GPT-2 trên một GPU cụ thể"""
+    """Hàm tạo mẫu mật khẩu bằng mô hình GPT-2 trên một GPU cụ thể
+    
+    :param test_model_path: Đường dẫn đến mô hình đã huấn luyện
+    :param tokenizer: Tokenizer để mã hóa đầu vào
+    :param GEN_BATCH_SIZE: Kích thước batch cho việc sinh mẫu
+    :param GPU_ID: ID của GPU được sử dụng (0, 1, ...)
+    :return: Danh sách các mật khẩu sinh ra
+    
+    """
     model = GPT2LMHeadModel.from_pretrained(test_model_path)  # Tải mô hình GPT-2 từ đường dẫn đã huấn luyện
     
     device = "cuda:" + str(GPU_ID)  # Xác định thiết bị GPU (ví dụ: cuda:0, cuda:1, ...)
@@ -52,7 +87,18 @@ def gen_sample(test_model_path, tokenizer, GEN_BATCH_SIZE, GPU_ID):
     return [*passwords,]  # Trả về danh sách các mật khẩu từ tập hợp
 
 def gen_parallel(vocab_file, batch_size, test_model_path, N, gen_passwords_path, num_gpus, gpu_index):
-    """Hàm sinh mật khẩu song song trên nhiều GPU"""
+    """Hàm sinh mật khẩu song song trên nhiều GPU
+    
+    :param vocab_file: Đường dẫn đến file vocab chứa các token và ID tương ứng
+    :param batch_size: Kích thước batch cho việc sinh mẫu
+    :param test_model_path: Đường dẫn đến mô hình đã huấn luyện
+    :param N: Tổng số mật khẩu cần sinh
+    :param gen_passwords_path: Đường dẫn lưu file đầu ra chứa mật khẩu sinh ra
+    :param num_gpus: Số lượng GPU có sẵn
+    :param gpu_index: Chỉ số GPU bắt đầu (thường là 0 hoặc 1)
+    :return: Không trả về giá trị, nhưng sẽ ghi mật khẩu sinh ra vào file đầu ra
+    
+    """
     print(f'Load tokenizer.')
     tokenizer = CharTokenizer(vocab_file=vocab_file,  # Tải tokenizer từ file vocab
                               bos_token="<BOS>",  # Token bắt đầu chuỗi

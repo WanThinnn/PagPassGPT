@@ -1,5 +1,14 @@
 # This file aims to get patterns rate from training set (cleaned).
+'''
+File này được viết để lấy tỷ lệ pattern từ tập dữ liệu huấn luyện (đã được làm sạch).
+Nó sẽ đọc tất cả các mật khẩu từ tệp đầu vào, tạo ra các pattern từ mật khẩu và lưu tỷ lệ xuất hiện của từng pattern vào tệp đầu ra.
+Nó sẽ sử dụng hàm get_pattern từ module concat_pattern_password để tạo ra các pattern từ mật khẩu.
+Nó sẽ sử dụng thư viện argparse để xử lý các tham số dòng lệnh và thư viện os để làm việc với hệ thống tệp.
+Nó sẽ kiểm tra xem tệp đầu ra đã tồn tại hay chưa, nếu chưa thì nó sẽ thực hiện tính toán và lưu kết quả vào tệp đầu ra.
+Nó sẽ ghi các pattern và tỷ lệ xuất hiện của chúng vào tệp đầu ra, mỗi dòng sẽ chứa một pattern và tỷ lệ xuất hiện tương ứng, cách nhau bằng tab.
 
+
+'''
 from concat_pattern_password import get_pattern  # Nhập hàm get_pattern từ module concat_pattern_password
 import argparse  # Thư viện để xử lý tham số dòng lệnh
 import os  # Thư viện để làm việc với hệ thống tệp

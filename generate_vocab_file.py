@@ -1,3 +1,10 @@
+'''
+File này được viết để tạo ra một tệp vocab chứa các token và ID tương ứng cho các ký tự và pattern trong mật khẩu.
+Nó sẽ tạo ra một tệp vocab.json chứa các token và ID tương ứng cho các ký tự và pattern trong mật khẩu.
+Nó sẽ sử dụng thư viện json để lưu trữ dữ liệu dưới định dạng JSON và thư viện OrderedDict để giữ nguyên thứ tự của các phần tử trong dictionary.
+Nó sẽ sử dụng thư viện argparse để xử lý các tham số dòng lệnh và thư viện os để làm việc với hệ thống tệp.
+'''
+
 import json  # Thư viện để làm việc với định dạng JSON
 from collections import OrderedDict  # Nhập OrderedDict để tạo dictionary giữ nguyên thứ tự chèn
 import argparse  # Thư viện để xử lý tham số dòng lệnh
