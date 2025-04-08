@@ -72,6 +72,11 @@ class KeywordsStoppingCriteria(StoppingCriteria):
         """
         Kiểm tra xem đầu ra đã chứa từ khóa nào trong danh sách từ khóa hay chưa.
         Nếu có, trả về True để dừng quá trình sinh mật khẩu.
+        
+        :param input_ids: đầu vào cần kiểm tra
+        :param scores: xác suất dự đoán của mô hình
+        :param kwargs: các tham số bổ sung
+        :return: True nếu đầu ra chứa từ khóa, False nếu không
         """
         if input_ids[0][-1] in self.keywords:
             return True
@@ -92,6 +97,7 @@ class SplitBigTask2SmallTask():
         :param device: thiết bị sử dụng (CPU hoặc GPU)
         :param tokenizer: bộ mã hóa được sử dụng để mã hóa và giải mã mật khẩu
         
+        :return: None
         """
         self.tasks_list = [] # danh sách các tác vụ cần thực hiện
         
@@ -123,6 +129,8 @@ class SplitBigTask2SmallTask():
         """
         Hàm này được gọi để thực hiện việc sinh mật khẩu.
         Nó sẽ lặp qua danh sách các tác vụ và thực hiện việc sinh mật khẩu dựa trên các mẫu đã cho.
+        
+        :return: danh sách các mật khẩu đã sinh
         """
         more_gen_num = 0 # biến này được sử dụng để theo dõi số lượng mật khẩu cần sinh thêm
         while(len(self.tasks_list) != 0): # lặp qua danh sách các tác vụ
@@ -158,150 +166,193 @@ class SplitBigTask2SmallTask():
 
 
     def get_predict_probability_from_model(self, input_ids):
-        cur_type = self.type_list[len(input_ids[0])-self.prefix_length]
-        with torch.no_grad():
-            output = self.model(input_ids=input_ids)
-            next_token_logits = output.logits[:, -1, :]
+        """
+        Hàm này được sử dụng để lấy xác suất dự đoán từ mô hình GPT-2.
+        Nó sẽ lấy đầu vào và trả về các chỉ số và xác suất dự đoán cho các phần tử trong đầu vào.
+        
+        :param input_ids: đầu vào cần sinh mật khẩu
+        :return: các chỉ số và xác suất dự đoán cho các phần tử trong đầu vào
+        """
+        cur_type = self.type_list[len(input_ids[0])-self.prefix_length] # lấy loại ký tự của phần tử đầu vào hiện tại
+        with torch.no_grad(): # không tính toán gradient để tiết kiệm bộ nhớ
+            output = self.model(input_ids=input_ids) # thực hiện dự đoán bằng mô hình GPT-2
+            next_token_logits = output.logits[:, -1, :] # lấy xác suất dự đoán cho phần tử tiếp theo
             
-            type_id_pair = TYPE_ID_DICT[cur_type]
+            type_id_pair = TYPE_ID_DICT[cur_type] # lấy khoảng của loại ký tự từ từ điển TYPE_ID_DICT
 
-            selected_logits = next_token_logits[:, type_id_pair[0]:type_id_pair[1]]
-            selected_softmax = torch.softmax(selected_logits, dim=-1)
-            sorted_indices = torch.argsort(selected_softmax, descending=True, dim=-1)
+            selected_logits = next_token_logits[:, type_id_pair[0]:type_id_pair[1]] # lọc xác suất dự đoán cho loại ký tự hiện tại
+            selected_softmax = torch.softmax(selected_logits, dim=-1) # tính toán xác suất dự đoán bằng hàm softmax
+            sorted_indices = torch.argsort(selected_softmax, descending=True, dim=-1) # sắp xếp các chỉ số theo thứ tự giảm dần
             
-            sorted_indexes = sorted_indices + type_id_pair[0]
-            sorted_softmax = selected_softmax[:, sorted_indices[0]]
-            return sorted_indexes.cpu(), sorted_softmax.cpu()
+            sorted_indexes = sorted_indices + type_id_pair[0] # thêm khoảng của loại ký tự vào các chỉ số đã sắp xếp
+            sorted_softmax = selected_softmax[:, sorted_indices[0]] # lọc xác suất dự đoán cho các chỉ số đã sắp xếp
+            return sorted_indexes.cpu(), sorted_softmax.cpu() # trả về các chỉ số và xác suất dự đoán cho các phần tử trong đầu vào
     
 
     def judge_gen_num_overflow(self) -> int:
-        total = 1
-        for _ in self.type_list:
-            total = total * BRUTE_DICT[_]
-        return total
+        """
+        Hàm này được sử dụng để kiểm tra xem số lượng mật khẩu cần sinh có vượt quá giới hạn hay không.
+        Nó sẽ tính toán số lượng ký tự khác nhau cho mỗi loại ký tự trong mật khẩu và trả về số lượng mật khẩu tối đa có thể sinh được.
+        
+        :return: số lượng mật khẩu tối đa có thể sinh được
+        """
+        total = 1 # biến này được sử dụng để tính toán số lượng ký tự khác nhau cho mỗi loại ký tự trong mật khẩu
+        for _ in self.type_list: # lặp qua từng loại ký tự trong mật khẩu
+            total = total * BRUTE_DICT[_] # tính toán số lượng ký tự khác nhau cho loại ký tự đó
+        return total # trả về số lượng mật khẩu tối đa có thể sinh được
     
  
 def directly_gen(tokenizer, device, input_ids, gen_num):
-    model = GPT2LMHeadModel.from_pretrained(model_path).to(device)
-    passwords = []
-
-    stop_ids = [tokenizer.pad_token_id]
-    stop_criteria = KeywordsStoppingCriteria(stop_ids)
+    """
+    Hàm này được sử dụng để sinh mật khẩu trực tiếp bằng cách sử dụng mô hình GPT-2.
+    Nó sẽ lấy đầu vào và số lượng mật khẩu cần sinh, sau đó thực hiện việc sinh mật khẩu bằng mô hình GPT-2.
     
-    outputs = model.generate(
-        input_ids= input_ids.view([1,-1]).to(device),
-        pad_token_id=tokenizer.pad_token_id,
-        stopping_criteria=StoppingCriteriaList([stop_criteria]),
-        max_new_tokens=13, 
-        do_sample=True, 
-        num_return_sequences=gen_num,
+    :param tokenizer: bộ mã hóa được sử dụng để mã hóa và giải mã mật khẩu
+    :param device: thiết bị sử dụng (CPU hoặc GPU)
+    :param input_ids: đầu vào cần sinh mật khẩu
+    :param gen_num: số lượng mật khẩu cần sinh
+    
+    :return: danh sách các mật khẩu đã sinh
+    """
+    model = GPT2LMHeadModel.from_pretrained(model_path).to(device) # tải mô hình GPT-2 đã được huấn luyện
+    passwords = [] # danh sách các mật khẩu đã sinh
+
+    stop_ids = [tokenizer.pad_token_id] # danh sách các từ khóa cần dừng quá trình sinh mật khẩu
+    stop_criteria = KeywordsStoppingCriteria(stop_ids) # tạo đối tượng KeywordsStoppingCriteria để dừng quá trình sinh mật khẩu khi gặp từ khóa
+    
+    # tạo đối tượng StoppingCriteriaList để dừng quá trình sinh mật khẩu khi gặp từ khóa
+    outputs = model.generate( 
+        input_ids= input_ids.view([1,-1]).to(device), # đầu vào cần sinh mật khẩu
+        pad_token_id=tokenizer.pad_token_id, # mã hóa token <PAD>
+        stopping_criteria=StoppingCriteriaList([stop_criteria]), # dừng quá trình sinh mật khẩu khi gặp từ khóa
+        max_new_tokens=13, # số lượng token tối đa cần sinh
+        do_sample=True,  # sử dụng phương pháp sinh mẫu để sinh mật khẩu
+        num_return_sequences=gen_num, # số lượng mật khẩu cần sinh
         )
     
-    outputs = tokenizer.batch_decode(outputs)
-    for output in outputs:
-        passwords.append(output.split(' ')[1])
-    passwords = set(passwords)
-    return [*passwords,]
+    outputs = tokenizer.batch_decode(outputs) # giải mã đầu vào để lấy mật khẩu đã sinh
+    for output in outputs: # lặp qua từng mật khẩu đã sinh
+        passwords.append(output.split(' ')[1]) # giải mã đầu vào và thêm mật khẩu vào danh sách mật khẩu đã sinh
+    passwords = set(passwords) # loại bỏ các mật khẩu trùng lặp trong danh sách mật khẩu đã sinh
+    return [*passwords,] # trả về danh sách mật khẩu đã sinh
         
 
 def single_gpu_task(task_list, gpu_id, tokenizer):
-    gened_passwords = []
-    output_count = 1
-    finished_task_count = 0
-    total_task_num = len(task_list)
-    more_gen_num = 0
-    while(len(task_list) != 0):
-        (pcfg_pattern, num) = task_list.pop()
-        num = num + more_gen_num
-        print(f'[{finished_task_count}/{total_task_num}] cuda:{gpu_id}\tGenerating {pcfg_pattern}: {num}')
-        if num <= batch_size:
-            input_ids = tokenizer.encode_forgen(pcfg_pattern)
-            input_ids = torch.concat([input_ids, torch.tensor([tokenizer.sep_token_id])])
-            new_passwords = directly_gen(tokenizer, 'cuda:'+str(gpu_id), input_ids, num)
-        else:
-            split2small = SplitBigTask2SmallTask(pcfg_pattern=pcfg_pattern,
-                                                 gen_num=num,
-                                                 device='cuda:'+str(gpu_id),
-                                                 tokenizer=tokenizer)
-            new_passwords = split2small()
+    """
+    Hàm này được sử dụng để thực hiện các tác vụ sinh mật khẩu trên một GPU cụ thể.
+    Nó sẽ lấy danh sách các tác vụ và thực hiện việc sinh mật khẩu dựa trên các mẫu đã cho.
+    
+    :param task_list: danh sách các tác vụ cần thực hiện
+    :param gpu_id: chỉ số GPU cần sử dụng
+    :param tokenizer: bộ mã hóa được sử dụng để mã hóa và giải mã mật khẩu
+    :return: None
+    """
+    gened_passwords = [] # danh sách các mật khẩu đã sinh
+    output_count = 1 # biến này được sử dụng để đánh số các tệp đầu ra
+    finished_task_count = 0 # biến này được sử dụng để đếm số lượng tác vụ đã hoàn thành
+    total_task_num = len(task_list) # tổng số lượng tác vụ cần thực hiện
+    more_gen_num = 0 # biến này được sử dụng để theo dõi số lượng mật khẩu cần sinh thêm
+    while(len(task_list) != 0): # lặp qua danh sách các tác vụ
+        (pcfg_pattern, num) = task_list.pop() # lấy tác vụ đầu tiên trong danh sách
+        num = num + more_gen_num # cập nhật số lượng mật khẩu cần sinh thêm
+        print(f'[{finished_task_count}/{total_task_num}] cuda:{gpu_id}\tGenerating {pcfg_pattern}: {num}') # in ra thông tin về tác vụ đang thực hiện
+        if num <= batch_size: # nếu số lượng mật khẩu cần sinh nhỏ hơn hoặc bằng kích thước lô
+            input_ids = tokenizer.encode_forgen(pcfg_pattern) # mã hóa mẫu mật khẩu
+            input_ids = torch.concat([input_ids, torch.tensor([tokenizer.sep_token_id])]) # thêm token <SEP> vào đầu vào
+            new_passwords = directly_gen(tokenizer, 'cuda:'+str(gpu_id), input_ids, num) # sinh mật khẩu trực tiếp bằng cách sử dụng mô hình GPT-2
+        else: # nếu số lượng mật khẩu cần sinh lớn hơn kích thước lô
+            split2small = SplitBigTask2SmallTask(pcfg_pattern=pcfg_pattern, # số lượng mật khẩu cần sinh
+                                                 gen_num=num, # mẫu mật khẩu cần sinh
+                                                 device='cuda:'+str(gpu_id), # thiết bị sử dụng (CPU hoặc GPU)
+                                                 tokenizer=tokenizer) # mã hóa mẫu mật khẩu
+            new_passwords = split2small() # thực hiện việc sinh mật khẩu dựa trên các mẫu đã cho
         
-        gened_num = len(new_passwords)
-        more_gen_num = num - gened_num
-        gened_passwords.extend(new_passwords)
-        finished_task_count += 1
+        gened_num = len(new_passwords) # số lượng mật khẩu đã sinh được
+        more_gen_num = num - gened_num # cập nhật số lượng mật khẩu cần sinh thêm
+        gened_passwords.extend(new_passwords) # thêm mật khẩu đã sinh vào danh sách mật khẩu đã sinh
+        finished_task_count += 1 # tăng số lượng tác vụ đã hoàn thành lên 1
+        # in ra thông tin về tác vụ đã hoàn thành
         print(f'[{finished_task_count}/{total_task_num}] cuda:{gpu_id}\tActually generated {pcfg_pattern}: {gened_num}\t(diff {num-gened_num})')
         
-        while len(gened_passwords) > save_num:
-            output_passwords = gened_passwords[:save_num]
-            file_path = output_path +'DC-GEN-[cuda:'+ str(gpu_id) + ']-'+str(output_count)+'.txt'
-            f = open(file_path, 'w', encoding='utf-8', errors='ignore')
-            for password in output_passwords:
-                f.write(password+'\n')
-            f.close()
-            output_count += 1
-            gened_passwords = gened_passwords[save_num:]
-            print(f'===> File saved in {file_path}.')
+        while len(gened_passwords) > save_num: # nếu số lượng mật khẩu đã sinh lớn hơn số lượng mật khẩu cần lưu
+            output_passwords = gened_passwords[:save_num] # lấy số lượng mật khẩu cần lưu
+            file_path = output_path +'DC-GEN-[cuda:'+ str(gpu_id) + ']-'+str(output_count)+'.txt' # đường dẫn đến tệp đầu ra để lưu trữ mật khẩu đã sinh
+            f = open(file_path, 'w', encoding='utf-8', errors='ignore') # mở tệp đầu ra với chế độ ghi
+            for password in output_passwords: # lặp qua từng mật khẩu đã sinh
+                f.write(password+'\n') # ghi mật khẩu vào tệp đầu ra
+            f.close() # đóng tệp đầu ra
+            output_count += 1 # tăng số lượng tệp đầu ra lên 1
+            gened_passwords = gened_passwords[save_num:] # loại bỏ số lượng mật khẩu đã lưu khỏi danh sách mật khẩu đã sinh
+            print(f'===> File saved in {file_path}.') # in ra thông tin về tệp đầu ra đã lưu
 
-    if len(gened_passwords) != 0:
-        file_path = output_path + 'DC-GEN-[cuda:'+ str(gpu_id) + ']-last.txt'
-        f = open(file_path, 'w', encoding='utf-8', errors='ignore')
-        for password in gened_passwords:
-            f.write(password+'\n')
-        f.close()
-        print(f'===> File saved in {file_path}.')
+    if len(gened_passwords) != 0: # nếu còn mật khẩu chưa được lưu
+        file_path = output_path + 'DC-GEN-[cuda:'+ str(gpu_id) + ']-last.txt' # đường dẫn đến tệp đầu ra để lưu trữ mật khẩu đã sinh
+        f = open(file_path, 'w', encoding='utf-8', errors='ignore') # mở tệp đầu ra với chế độ ghi
+        for password in gened_passwords: # lặp qua từng mật khẩu đã sinh
+            f.write(password+'\n') # ghi mật khẩu vào tệp đầu ra
+        f.close() # đóng tệp đầu ra
+        print(f'===> File saved in {file_path}.') # in ra thông tin về tệp đầu ra đã lưu
 
 
 def prepare_task_list(df, gpu_num):
-    threshold = 100
-    threshold_rate = threshold/n
-    filtered_df = df[df['rate'] >= threshold_rate]
-    sum_rate = filtered_df['rate'].sum()
-    filtered_df['softmax_rate'] = filtered_df['rate']/sum_rate
+    """
+    Hàm này được sử dụng để chuẩn bị danh sách các tác vụ cần thực hiện.
+    Nó sẽ lọc các mẫu mật khẩu dựa trên tỷ lệ của chúng và chia nhỏ các tác vụ thành các tác vụ nhỏ hơn để sinh mật khẩu.
     
-    total_gpu_tasks = []
-    for i in range(gpu_num):
-        total_gpu_tasks.append([])
+    :param df: DataFrame chứa các mẫu mật khẩu và tỷ lệ của chúng
+    :param gpu_num: số lượng GPU cần sử dụng
+    :return: danh sách các tác vụ cần thực hiện
+    """
+    threshold = 100 # tỷ lệ tối thiểu để lọc các mẫu mật khẩu
+    threshold_rate = threshold/n   # tỷ lệ tối thiểu để lọc các mẫu mật khẩu
+    filtered_df = df[df['rate'] >= threshold_rate] # lọc các mẫu mật khẩu dựa trên tỷ lệ của chúng
+    sum_rate = filtered_df['rate'].sum()  # tính tổng tỷ lệ của các mẫu mật khẩu còn lại
+    filtered_df['softmax_rate'] = filtered_df['rate']/sum_rate # chuẩn hóa tỷ lệ của các mẫu mật khẩu còn lại
+    
+    total_gpu_tasks = [] # danh sách các tác vụ cần thực hiện
+    for i in range(gpu_num): # lặp qua số lượng GPU cần sử dụng
+        total_gpu_tasks.append([]) # khởi tạo danh sách các tác vụ cho từng GPU
 
-    turn = 0
-    for row in filtered_df.itertuples():
-        pcfg_pattern = row[1]
-        num = int(row[3]*n)
-        total_gpu_tasks[turn].append((pcfg_pattern, num))
-        turn = (turn + 1) % gpu_num
+    turn = 0 # biến này được sử dụng để theo dõi GPU hiện tại đang thực hiện tác vụ
+    for row in filtered_df.itertuples(): # lặp qua từng mẫu mật khẩu trong DataFrame
+        pcfg_pattern = row[1] # lấy mẫu mật khẩu
+        num = int(row[3]*n) # lấy số lượng mật khẩu cần sinh dựa trên tỷ lệ của mẫu mật khẩu
+        total_gpu_tasks[turn].append((pcfg_pattern, num)) # thêm tác vụ vào danh sách các tác vụ cần thực hiện cho GPU hiện tại
+        turn = (turn + 1) % gpu_num #  cập nhật GPU hiện tại đang thực hiện tác vụ
 
-    return total_gpu_tasks
+    return total_gpu_tasks # danh sách các tác vụ cần thực hiện cho từng GPU
 
 
 if __name__ == "__main__":
-    begin_time = time.time()
+    begin_time = time.time() # bắt đầu tính thời gian thực hiện
 
-    print(f'Load tokenizer.')
-    tokenizer = CharTokenizer(vocab_file=vocab_file, 
-                                    bos_token="<BOS>",
-                                    eos_token="<EOS>",
-                                    pad_token="<PAD>",
-                                    sep_token="<SEP>",
-                                    unk_token="<UNK>"
+    print(f'Load tokenizer.') # tải bộ mã hóa
+    tokenizer = CharTokenizer(vocab_file=vocab_file, # đường dẫn đến tệp vocab.json
+                                    bos_token="<BOS>", # mã hóa token <BOS>
+                                    eos_token="<EOS>", # mã hóa token <EOS>
+                                    pad_token="<PAD>", # mã hóa token <PAD>
+                                    sep_token="<SEP>", # mã hóa token <SEP>
+                                    unk_token="<UNK>" # mã hóa token <UNK>
                                     )
-    tokenizer.padding_side = "left"
+    tokenizer.padding_side = "left" # đặt bên trái cho việc đệm
 
-    print(f'Load patterns.')
-    df = pd.read_csv(pattern_file, sep='\t', header=None, names=['pattern', 'rate'])
-    total_task_list = prepare_task_list(df, gpu_num)
+    print(f'Load patterns.') # tải các mẫu mật khẩu
+    df = pd.read_csv(pattern_file, sep='\t', header=None, names=['pattern', 'rate']) # đường dẫn đến tệp chứa các mẫu mật khẩu và tỷ lệ của chúng
+    total_task_list = prepare_task_list(df, gpu_num) # chuẩn bị danh sách các tác vụ cần thực hiện
 
     # multi threading
-    threads = []
-    print('*'*30)
-    print(f'Generation begin.')
-    for i in range(gpu_num):
-        thread = threading.Thread(target=single_gpu_task, args=[total_task_list[i], i+gpu_index, tokenizer])
-        thread.start()
-        threads.append(thread)
+    threads = [] # danh sách các luồng
+    print('*'*30) # in ra dấu phân cách
+    print(f'Generation begin.') # in ra thông tin về việc bắt đầu sinh mật khẩu
+    for i in range(gpu_num): # lặp qua số lượng GPU cần sử dụng
+        thread = threading.Thread(target=single_gpu_task, args=[total_task_list[i], i+gpu_index, tokenizer]) # tạo luồng mới để thực hiện tác vụ trên GPU
+        thread.start() # bắt đầu luồng
+        threads.append(thread) # thêm luồng vào danh sách các luồng
     
-    for t in threads:
-        t.join()
+    for t in threads: # lặp qua từng luồng trong danh sách các luồng
+        t.join() # đợi cho tất cả các luồng hoàn thành
     
-    end_time = time.time()
-    print('Generation done.')
-    print('*'*30)
-    print(f'Use time: {end_time-begin_time}')
+    end_time = time.time() # kết thúc tính thời gian thực hiện
+    print('Generation done.') # in ra thông tin về việc hoàn thành sinh mật khẩu
+    print('*'*30)  # in ra dấu phân cách
+    print(f'Use time: {end_time-begin_time}') # in ra thời gian thực hiện
