@@ -6,7 +6,7 @@ test_dataset="./dataset/${dataset_name}-cleaned-Test.txt"  # Tập test
 output_path="./generate/1000000/"  # Thư mục chứa mật khẩu sinh ra
 
 # 1. Đánh giá mật khẩu sinh ra bằng phương pháp thông thường
-python evaluate.py --test_file="$test_dataset" --gen_path="$gen_path" --isNormal
+python3.8 evaluate.py --test_file="$test_dataset" --gen_path="$gen_path" --isNormal
 
 # 2. Đánh giá mật khẩu sinh ra bằng phương pháp DC-GEN
-python evaluate.py --test_file="$test_dataset" --gen_path="$gen_path"
+python3.8 evaluate.py --test_file="$test_dataset" --gen_path="$gen_path"
