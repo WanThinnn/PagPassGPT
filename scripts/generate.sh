@@ -12,4 +12,5 @@ python get_pattern_rate.py --dataset_path=$cleaned_dataset
 # python DC-GEN.py --model_path=$model_path --output_path=$output_path --generate_num=1000000 --batch_size=5000 --gpu_num=2 --gpu_index=4
 
 # 3. Hoặc sinh mật khẩu không sử dụng DC-GEN (phương pháp thông thường)
-python normal-gen.py --model_path=$model_path --output_path=$output_path --generate_num=1000000 --batch_size=5000 --gpu_num=2 --gpu_index=4
+#python normal-gen.py --model_path=$model_path --output_path=$output_path --generate_num=1000000 --batch_size=5000 --gpu_num=2 --gpu_index=4
+python3.8 normal-gen.py --model_path=$model_path --output_path=$output_path --generate_num=1000000 --batch_size=5000 --gpu_num=1 --gpu_index=0
