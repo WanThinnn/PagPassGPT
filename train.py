@@ -9,6 +9,7 @@ from transformers import GPT2Config # Thư viện này dùng để cấu hình m
 from transformers import GPT2LMHeadModel # Thư viện này dùng để tạo mô hình GPT-2 với đầu ra là một chuỗi văn bản
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback # Thư viện này dùng để huấn luyện mô hình
 import time
+import os
 import argparse # Thư viện này dùng để phân tích các tham số đầu vào từ dòng lệnh
 
 parser = argparse.ArgumentParser() # Tạo một đối tượng ArgumentParser để phân tích các tham số đầu vào từ dòng lệnh
@@ -114,8 +115,8 @@ training_args = TrainingArguments(
     seed=random_seed, # Hạt giống ngẫu nhiên để đảm bảo tính tái lập của quá trình huấn luyện
     metric_for_best_model='eval_loss', # Tham số để đánh giá mô hình tốt nhất
     load_best_model_at_end=True, # Tải mô hình tốt nhất ở cuối quá trình huấn luyện
-    save_total_limit=1 # Giới hạn số lượng mô hình đã lưu
-    )
+    save_total_limit=1, # Giới hạn số lượng mô hình đã lưu
+)
 
 trainer = Trainer( # Tạo một đối tượng Trainer để huấn luyện mô hình
     model=model, # Mô hình để huấn luyện
@@ -129,7 +130,15 @@ trainer = Trainer( # Tạo một đối tượng Trainer để huấn luyện m�
 
 print(f'*'*30) # In ra các tham số huấn luyện
 print(f'Training begin.') # In ra thông báo bắt đầu huấn luyện
-trainer.train() # Bắt đầu quá trình huấn luyện mô hình
+# trainer.train() # Bắt đầu quá trình huấn luyện mô hình
+ckpts = [d for d in os.listdir(model_output_dir) if d.startswith("checkpoint-")]
+if ckpts:
+    latest = sorted(ckpts, key=lambda x: int(x.split("-")[-1]))[-1]
+    resume_dir = os.path.join(model_output_dir, latest)
+    print(f"Resuming from {resume_dir}")
+    trainer.train(resume_from_checkpoint=resume_dir)
+else:
+    trainer.train()
 
 trainer.save_model(model_output_dir+"last-step/") # Lưu mô hình đã huấn luyện vào thư mục đã chỉ định
 print(f'Model saved in {model_output_dir+"last-step/"}') # In ra thông báo đã lưu mô hình
