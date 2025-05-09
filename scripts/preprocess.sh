@@ -7,10 +7,10 @@ test_dataset="./dataset/${dataset_name}-cleaned-Test.txt"  # Đường dẫn t�
 ready4train_dataset="./dataset/${dataset_name}-cleaned-Train-ready.txt"  # Đường dẫn dataset sẵn sàng để train
 
 # 1. Làm sạch dataset gốc
-python clean_dataset.py --dataset_path=$original_dataset --output_path=$cleaned_dataset
+python3.8 clean_dataset.py --dataset_path=$original_dataset --output_path=$cleaned_dataset
 
 # 2. Chia dataset thành tập train và test
-python split_dataset.py --dataset_path=$cleaned_dataset --train_path=$training_dataset --test_path=$test_dataset
+python3.8 split_dataset.py --dataset_path=$cleaned_dataset --train_path=$training_dataset --test_path=$test_dataset
 
 # 3. Kết hợp pattern và password để chuẩn bị cho training
-python concat_pattern_password.py --dataset_path=$training_dataset --output_path=$ready4train_dataset
+python3.8 concat_pattern_password.py --dataset_path=$training_dataset --output_path=$ready4train_dataset
