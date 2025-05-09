@@ -66,7 +66,8 @@ def gen_sample(test_model_path, tokenizer, GEN_BATCH_SIZE, GPU_ID):
     """
     model = GPT2LMHeadModel.from_pretrained(test_model_path)  # Tải mô hình GPT-2 từ đường dẫn đã huấn luyện
     
-    device = "cuda:" + str(GPU_ID)  # Xác định thiết bị GPU (ví dụ: cuda:0, cuda:1, ...)
+    # device = "cuda:" + str(GPU_ID)  # Xác định thiết bị GPU (ví dụ: cuda:0, cuda:1, ...)
+    device = torch.device("cuda:0") # Chọn GPU đầu tiên (cuda:0) để chạy mô hình (trường hợp chỉ có một GPU)
     model.to(device)  # Chuyển mô hình lên GPU được chỉ định
 
     inputs = ""  # Đầu vào rỗng để mô hình tự sinh từ đầu
